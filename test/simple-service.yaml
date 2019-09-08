@@ -4,11 +4,7 @@ metadata:
   annotations:
     microsegmentation-operator.redhat-cop.io/microsegmentation: "true"  
     microsegmentation-operator.redhat-cop.io/inbound-namespace-labels: frontend=abc,frontend-user=customers
-  creationTimestamp: null
   name: test
-spec:
-  finalizers:
-  - kubernetes
 ---
 apiVersion: v1
 kind: Service
