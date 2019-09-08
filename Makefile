@@ -23,6 +23,10 @@ native-test: generate fmt vet
 	go test ./pkg/... ./cmd/... -coverprofile cover.out
 
 # Build manager binary
+manager-local: generate fmt vet
+	go build -o build/_output/bin/microsegmentation-operator-local  -ldflags $(LDFLAGS) ./cmd/manager
+
+# Build manager binary
 manager: generate fmt vet
 	go build -o build/_output/bin/microsegmentation-operator  -ldflags $(LDFLAGS) github.com/redhat-cop/microsegmentation-operator/cmd/manager
 
