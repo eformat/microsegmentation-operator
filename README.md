@@ -202,5 +202,5 @@ dep ensure
 Using the [operator-sdk](https://github.com/operator-framework/operator-sdk), run the operator locally:
 
 ```shell
-operator-sdk up local --namespace ""
+operator-sdk up local --namespace "test" --verbose
 ```

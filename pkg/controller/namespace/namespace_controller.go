@@ -156,7 +156,7 @@ func getNetworkPolicy(namespace *corev1.Namespace) *networking.NetworkPolicy {
 		},
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      namespace.GetName(),
-			Namespace: namespace.GetNamespace(),
+			Namespace: namespace.GetName(),
 		},
 		Spec: networking.NetworkPolicySpec{
 			PodSelector: metav1.LabelSelector{},
@@ -166,6 +166,7 @@ func getNetworkPolicy(namespace *corev1.Namespace) *networking.NetworkPolicy {
 	}
 
 	if inboundNamespaceLabels, ok := namespace.Annotations[inboundNamespaceLabels]; ok {
+		networkPolicy.ObjectMeta.Name = "ingress-from-namespaces"
 		networkPolicyIngressRule := networking.NetworkPolicyIngressRule{
 			From: []networking.NetworkPolicyPeer{networking.NetworkPolicyPeer{
 				NamespaceSelector: getLabelSelectorFromAnnotation(inboundNamespaceLabels),
@@ -174,6 +175,7 @@ func getNetworkPolicy(namespace *corev1.Namespace) *networking.NetworkPolicy {
 		networkPolicy.Spec.Ingress = append(networkPolicy.Spec.Ingress, networkPolicyIngressRule)
 	}
 	if outboundNamespaceLabels, ok := namespace.Annotations[outboundNamespaceLabels]; ok {
+		networkPolicy.ObjectMeta.Name = "egress-to-namespaces"
 		networkPolicyEgressRule := networking.NetworkPolicyEgressRule{
 			To: []networking.NetworkPolicyPeer{networking.NetworkPolicyPeer{
 				NamespaceSelector: getLabelSelectorFromAnnotation(outboundNamespaceLabels),
@@ -186,7 +188,7 @@ func getNetworkPolicy(namespace *corev1.Namespace) *networking.NetworkPolicy {
 }
 
 func getLabelSelectorFromAnnotation(labels string) *metav1.LabelSelector {
-	// tihs annotation looks like this: label1=value,label2=value2
+	// this annotation looks like this: label1=value,label2=value2
 	labelMap := map[string]string{}
 	labelsStrings := strings.Split(labels, ",")
 	for _, labelString := range labelsStrings {
