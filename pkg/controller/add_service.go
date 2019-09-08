@@ -2,8 +2,7 @@ package controller
 
 import (
 	"github.com/eformat/microsegmentation-operator/pkg/controller/namespace"
-
-	"github.com/redhat-cop/microsegmentation-operator/pkg/controller/service"
+	"github.com/eformat/microsegmentation-operator/pkg/controller/service"
 )
 
 func init() {

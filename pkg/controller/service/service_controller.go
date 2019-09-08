@@ -30,7 +30,7 @@ const annotationBase = "microsegmentation-operator.redhat-cop.io"
 const microsgmentationAnnotation = annotationBase + "/microsegmentation"
 const additionalInboundPortsAnnotation = annotationBase + "/additional-inbound-ports"
 const inboundPodLabels = annotationBase + "/inbound-pod-labels"
-const inboundNamespaceLables = annotationBase + "/inbound-namespace-labels"
+const inboundNamespaceLabels = annotationBase + "/inbound-namespace-labels"
 const outboundPodLabels = annotationBase + "/outbound-pod-labels"
 const outboundNamespaceLabels = annotationBase + "/outbound-namespace-labels"
 const outboundPorts = annotationBase + "/outbound-ports"
@@ -118,7 +118,7 @@ type ReconcileService struct {
 // Result.Requeue is true, otherwise upon completion it will remove the work from the queue.
 func (r *ReconcileService) Reconcile(request reconcile.Request) (reconcile.Result, error) {
 	reqLogger := log.WithValues("Request.Namespace", request.Namespace, "Request.Name", request.Name)
-	reqLogger.Info("Reconciling Service")
+	reqLogger.Info("Reconciling Service2")
 
 	// Fetch the Service instance
 	instance := &corev1.Service{}
@@ -173,7 +173,7 @@ func getNetworkPolicy(service *corev1.Service) *networking.NetworkPolicy {
 		},
 	}
 	_, ok1 := service.Annotations[inboundPodLabels]
-	_, ok2 := service.Annotations[inboundNamespaceLables]
+	_, ok2 := service.Annotations[inboundNamespaceLabels]
 
 	if !ok1 && !ok2 {
 		//if there are no pod or namespaces annotations we create one for inbound traffic only from the current namespace
@@ -196,10 +196,10 @@ func getNetworkPolicy(service *corev1.Service) *networking.NetworkPolicy {
 		networkPolicy.Spec.Ingress = append(networkPolicy.Spec.Ingress, networkPolicyIngressRule)
 
 	}
-	// if inboundNamespaceLables, ok := service.Annotations[inboundNamespaceLables]; ok {
+	// if inboundNamespaceLabels, ok := service.Annotations[inboundNamespaceLabels]; ok {
 	// 	networkPolicyIngressRule := networking.NetworkPolicyIngressRule{
 	// 		From: []networking.NetworkPolicyPeer{networking.NetworkPolicyPeer{
-	// 			NamespaceSelector: getLabelSelectorFromAnnotation(inboundNamespaceLables),
+	// 			NamespaceSelector: getLabelSelectorFromAnnotation(inboundNamespaceLabels),
 	// 		}},
 	// 		Ports: append(getPortsFromService(service.Spec.Ports), getPortsFromAnnotation(service.Annotations[additionalInboundPortsAnnotation])...),
 	// 	}
@@ -215,15 +215,15 @@ func getNetworkPolicy(service *corev1.Service) *networking.NetworkPolicy {
 		}
 		networkPolicy.Spec.Egress = append(networkPolicy.Spec.Egress, networkPolicyEgressRule)
 	}
-	if outboundNamespaceLabels, ok := service.Annotations[outboundNamespaceLabels]; ok {
-		networkPolicyEgressRule := networking.NetworkPolicyEgressRule{
-			To: []networking.NetworkPolicyPeer{networking.NetworkPolicyPeer{
-				NamespaceSelector: getLabelSelectorFromAnnotation(outboundNamespaceLabels),
-			}},
-			Ports: getPortsFromAnnotation(service.Annotations[outboundPorts]),
-		}
-		networkPolicy.Spec.Egress = append(networkPolicy.Spec.Egress, networkPolicyEgressRule)
-	}
+	// if outboundNamespaceLabels, ok := service.Annotations[outboundNamespaceLabels]; ok {
+	// 	networkPolicyEgressRule := networking.NetworkPolicyEgressRule{
+	// 		To: []networking.NetworkPolicyPeer{networking.NetworkPolicyPeer{
+	// 			NamespaceSelector: getLabelSelectorFromAnnotation(outboundNamespaceLabels),
+	// 		}},
+	// 		Ports: getPortsFromAnnotation(service.Annotations[outboundPorts]),
+	// 	}
+	// 	networkPolicy.Spec.Egress = append(networkPolicy.Spec.Egress, networkPolicyEgressRule)
+	// }
 
 	return networkPolicy
 }

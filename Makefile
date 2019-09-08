@@ -11,10 +11,10 @@ BUILD_COMMIT := $(shell ./scripts/build/get-build-commit.sh)
 BUILD_TIMESTAMP := $(shell ./scripts/build/get-build-timestamp.sh)
 BUILD_HOSTNAME := $(shell ./scripts/build/get-build-hostname.sh)
 
-LDFLAGS := "-X github.com/redhat-cop/microsegmentation-operator/version.Version=$(VERSION) \
-	-X github.com/redhat-cop/microsegmentation-operator/version.Vcs=$(BUILD_COMMIT) \
-	-X github.com/redhat-cop/microsegmentation-operator/version.Timestamp=$(BUILD_TIMESTAMP) \
-	-X github.com/redhat-cop/microsegmentation-operator/version.Hostname=$(BUILD_HOSTNAME)"
+LDFLAGS := "-X github.com/eformat/microsegmentation-operator/version.Version=$(VERSION) \
+	-X github.com/eformat/microsegmentation-operator/version.Vcs=$(BUILD_COMMIT) \
+	-X github.com/eformat/microsegmentation-operator/version.Timestamp=$(BUILD_TIMESTAMP) \
+	-X github.com/eformat/microsegmentation-operator/version.Hostname=$(BUILD_HOSTNAME)"
 
 all: manager
 
@@ -24,7 +24,7 @@ native-test: generate fmt vet
 
 # Build manager binary
 manager-local: generate fmt vet
-	go build -o build/_output/bin/microsegmentation-operator-local  -ldflags $(LDFLAGS) ./cmd/manager
+	go build -o build/_output/bin/microsegmentation-operator-local  -ldflags $(LDFLAGS) github.com/eformat/microsegmentation-operator/cmd/manager
 
 # Build manager binary
 manager: generate fmt vet
