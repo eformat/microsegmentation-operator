@@ -105,9 +105,6 @@ type ReconcileNamespace struct {
 
 // Reconcile reads that state of the cluster for a Namespace object and makes changes based on the state read
 // and what is in the Namespace.Spec
-// TODO(user): Modify this Reconcile function to implement your Controller logic.  This example creates
-// a Pod as an example
-// Note:
 // The Controller will requeue the Request to be processed again if the returned error is non-nil or
 // Result.Requeue is true, otherwise upon completion it will remove the work from the queue.
 func (r *ReconcileNamespace) Reconcile(request reconcile.Request) (reconcile.Result, error) {
@@ -116,19 +113,34 @@ func (r *ReconcileNamespace) Reconcile(request reconcile.Request) (reconcile.Res
 
 	// Fetch the Namespace instance
 	instance := &corev1.Namespace{}
+	request.NamespacedName.Namespace = ""
 	err := r.GetClient().Get(context.TODO(), request.NamespacedName, instance)
 	if err != nil {
 		if errors.IsNotFound(err) {
 			// Request object not found, could have been deleted after reconcile request.
 			// Owned objects are automatically garbage collected. For additional cleanup logic use finalizers.
 			// Return and don't requeue
+			reqLogger.Info("Reconciling Namespace 2")
 			return reconcile.Result{}, nil
 		}
 		// Error reading the object - requeue the request.
 		return reconcile.Result{}, err
 	}
+	reqLogger.Info("Reconciling Namespace 3")
 
-	// Define a new Pod object
+	// The object is being deleted
+	if !instance.ObjectMeta.DeletionTimestamp.IsZero() {
+		return reconcile.Result{}, nil
+	}
+
+	// Define a new default networkpolicy
+	defaultNetworkPolicy := getDenyDefaultNetworkPolicy(instance)
+	err = r.CreateOrUpdateResource(instance, instance.GetNamespace(), defaultNetworkPolicy)
+	if err != nil {
+		log.Error(err, "unable to create DenyDefaultNetworkPolicy", "NetworkPolicy", defaultNetworkPolicy)
+	}
+
+	// Define a new object
 	networkPolicy := getNetworkPolicy(instance)
 
 	if instance.Annotations[microsgmentationAnnotation] == "true" {
@@ -146,6 +158,27 @@ func (r *ReconcileNamespace) Reconcile(request reconcile.Request) (reconcile.Res
 	}
 
 	return reconcile.Result{}, nil
+}
+
+func getDenyDefaultNetworkPolicy(namespace *corev1.Namespace) *networking.NetworkPolicy {
+	networkPolicy := &networking.NetworkPolicy{
+		TypeMeta: metav1.TypeMeta{
+			APIVersion: "networking.k8s.io/v1",
+			Kind:       "NetworkPolicy",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "deny-by-default",
+			Namespace: namespace.GetName(),
+		},
+		Spec: networking.NetworkPolicySpec{
+			PodSelector: metav1.LabelSelector{},
+			Egress:      []networking.NetworkPolicyEgressRule{},
+			Ingress:     []networking.NetworkPolicyIngressRule{},
+		},
+	}
+	networkPolicy.Spec.Ingress = append(networkPolicy.Spec.Ingress, networking.NetworkPolicyIngressRule{})
+
+	return networkPolicy
 }
 
 func getNetworkPolicy(namespace *corev1.Namespace) *networking.NetworkPolicy {

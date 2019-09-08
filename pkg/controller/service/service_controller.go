@@ -118,7 +118,7 @@ type ReconcileService struct {
 // Result.Requeue is true, otherwise upon completion it will remove the work from the queue.
 func (r *ReconcileService) Reconcile(request reconcile.Request) (reconcile.Result, error) {
 	reqLogger := log.WithValues("Request.Namespace", request.Namespace, "Request.Name", request.Name)
-	reqLogger.Info("Reconciling Service2")
+	reqLogger.Info("Reconciling Service")
 
 	// Fetch the Service instance
 	instance := &corev1.Service{}
@@ -161,7 +161,7 @@ func getNetworkPolicy(service *corev1.Service) *networking.NetworkPolicy {
 			Kind:       "NetworkPolicy",
 		},
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      service.GetName(),
+			Name:      "service-" + service.GetName(),
 			Namespace: service.GetNamespace(),
 		},
 		Spec: networking.NetworkPolicySpec{
