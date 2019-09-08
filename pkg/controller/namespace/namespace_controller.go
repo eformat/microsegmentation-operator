@@ -173,12 +173,11 @@ func getNetworkPolicy(namespace *corev1.Namespace) *networking.NetworkPolicy {
 		}
 		networkPolicy.Spec.Ingress = append(networkPolicy.Spec.Ingress, networkPolicyIngressRule)
 	}
-	if outboundNamespaceLabels, ok := service.Annotations[outboundNamespaceLabels]; ok {
+	if outboundNamespaceLabels, ok := namespace.Annotations[outboundNamespaceLabels]; ok {
 		networkPolicyEgressRule := networking.NetworkPolicyEgressRule{
 			To: []networking.NetworkPolicyPeer{networking.NetworkPolicyPeer{
 				NamespaceSelector: getLabelSelectorFromAnnotation(outboundNamespaceLabels),
 			}},
-			Ports: getPortsFromAnnotation(service.Annotations[outboundPorts]),
 		}
 		networkPolicy.Spec.Egress = append(networkPolicy.Spec.Egress, networkPolicyEgressRule)
 	}
