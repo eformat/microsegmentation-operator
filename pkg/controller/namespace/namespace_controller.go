@@ -27,6 +27,7 @@ var log = logf.Log.WithName("controller_namespace")
 const annotationBase = "microsegmentation-operator.redhat-cop.io"
 const microsgmentationAnnotation = annotationBase + "/microsegmentation"
 const inboundNamespaceLabels = annotationBase + "/inbound-namespace-labels"
+const outboundNamespaceLabels = annotationBase + "/outbound-namespace-labels"
 const controllerName = "namespace-controller"
 
 // Add creates a new Namespace Controller and adds it to the Manager. The Manager will set fields on the Controller
