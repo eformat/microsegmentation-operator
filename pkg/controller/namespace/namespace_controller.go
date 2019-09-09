@@ -63,11 +63,15 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 			if !ok {
 				return false
 			}
-			oldValue, _ := e.MetaOld.GetAnnotations()[microsgmentationAnnotation]
-			newValue, _ := e.MetaNew.GetAnnotations()[microsgmentationAnnotation]
-			old := oldValue == "true"
-			new := newValue == "true"
-			return old != new
+			oldValueMS, _ := e.MetaOld.GetAnnotations()[microsgmentationAnnotation]
+			newValueMS, _ := e.MetaNew.GetAnnotations()[microsgmentationAnnotation]
+			oldMS := oldValueMS == "true"
+			newMS := newValueMS == "true"
+			oldValueAS, _ := e.MetaOld.GetAnnotations()[allowFromSelfLabel]
+			newValueAS, _ := e.MetaNew.GetAnnotations()[allowFromSelfLabel]
+			oldAS := oldValueAS == "true"
+			newAS := newValueAS == "true"
+			return (oldMS != newMS) || (oldAS != newAS)
 		},
 		CreateFunc: func(e event.CreateEvent) bool {
 			_, ok := e.Object.(*corev1.Namespace)
@@ -115,7 +119,7 @@ func (r *ReconcileNamespace) Reconcile(request reconcile.Request) (reconcile.Res
 	// Fetch the Namespace instance
 	instance := &corev1.Namespace{}
 	// Funky NamespacedName stuff here, this should work?
-	//err := r.GetClient().Get(context.TODO(), request.NamespacedName, instance)
+	// err := r.GetClient().Get(context.TODO(), request.NamespacedName, instance)
 	err := r.GetClient().Get(context.TODO(), types.NamespacedName{Name: request.NamespacedName.Name}, instance)
 	if err != nil {
 		if errors.IsNotFound(err) {
@@ -151,8 +155,11 @@ func (r *ReconcileNamespace) Reconcile(request reconcile.Request) (reconcile.Res
 			return r.manageError(err, instance)
 		}
 	} else {
-		err = r.DeleteResource(allowFromSelfNetworkPolicy)
+		err = r.GetClient().Delete(context.TODO(), allowFromSelfNetworkPolicy)
 		if err != nil {
+			if errors.IsNotFound(err) {
+				return reconcile.Result{}, nil
+			}
 			log.Error(err, "unable to delete AllowFromSelfNetworkPolicy", "NetworkPolicy", allowFromSelfNetworkPolicy)
 			return r.manageError(err, instance)
 		}
@@ -168,8 +175,11 @@ func (r *ReconcileNamespace) Reconcile(request reconcile.Request) (reconcile.Res
 			return r.manageError(err, instance)
 		}
 	} else {
-		err = r.DeleteResource(networkPolicy)
+		err = r.GetClient().Delete(context.TODO(), networkPolicy)
 		if err != nil {
+			if errors.IsNotFound(err) {
+				return reconcile.Result{}, nil
+			}
 			log.Error(err, "unable to delete NetworkPolicy", "NetworkPolicy", networkPolicy)
 			return r.manageError(err, instance)
 		}

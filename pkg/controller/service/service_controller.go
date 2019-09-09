@@ -147,8 +147,11 @@ func (r *ReconcileService) Reconcile(request reconcile.Request) (reconcile.Resul
 			return r.manageError(err, instance)
 		}
 	} else {
-		err = r.DeleteResource(networkPolicy)
+		err = r.GetClient().Delete(context.TODO(), networkPolicy)
 		if err != nil {
+			if errors.IsNotFound(err) {
+				return reconcile.Result{}, nil
+			}
 			log.Error(err, "unable to delete NetworkPolicy", "NetworkPolicy", networkPolicy)
 			return r.manageError(err, instance)
 		}
