@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"fmt"
 	"strconv"
 	"strings"
 	"time"
@@ -275,6 +276,12 @@ func getLabelSelectorFromAnnotation(labels string) *metav1.LabelSelector {
 	labelMap := map[string]string{}
 	labelsStrings := strings.Split(labels, ",")
 	for _, labelString := range labelsStrings {
+		if strings.Index(labelString, "=") < 1 {
+			log.Error(fmt.Errorf("Labels: %s ", labels), "FATAL: check service annotations - missing = sign ?", labels)
+			return &metav1.LabelSelector{
+				MatchLabels: labelMap,
+			}
+		}
 		label := labelString[:strings.Index(labelString, "=")]
 		value := labelString[strings.Index(labelString, "=")+1:]
 		labelMap[label] = value
