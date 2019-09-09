@@ -8,6 +8,7 @@ rules:
   resources:
   - events
   - services
+  - namespaces
   verbs:
   - "*" 
 - apiGroups:
@@ -35,6 +36,7 @@ rules:
   - ""
   resources:
   - services
+  - namespaces
   verbs:
   - "*"
 #Metrics  

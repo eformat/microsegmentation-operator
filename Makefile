@@ -1,7 +1,7 @@
 
 # Image URL to use all building/pushing image targets
 REGISTRY ?= quay.io
-REPOSITORY ?= $(REGISTRY)/redhat-cop/microsegmentation-operator
+REPOSITORY ?= $(REGISTRY)/eformat/microsegmentation-operator
 
 IMG := $(REPOSITORY):latest
 
@@ -28,7 +28,7 @@ manager-local: generate fmt vet
 
 # Build manager binary
 manager: generate fmt vet
-	go build -o build/_output/bin/microsegmentation-operator  -ldflags $(LDFLAGS) github.com/redhat-cop/microsegmentation-operator/cmd/manager
+	go build -o build/_output/bin/microsegmentation-operator  -ldflags $(LDFLAGS) github.com/eformat/microsegmentation-operator/cmd/manager
 
 # Build manager binary
 manager-osx: generate fmt vet
@@ -78,7 +78,7 @@ docker-push-release:  docker-tag-release
 
 # Build the docker image
 docker-build:
-	docker build . -t ${IMG} -f build/Dockerfile
+	podman build . -t ${IMG} -f build/Dockerfile
 
 # Push the docker image
 docker-push:
