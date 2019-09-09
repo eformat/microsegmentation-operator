@@ -114,7 +114,7 @@ func (r *ReconcileNamespace) Reconcile(request reconcile.Request) (reconcile.Res
 
 	// Fetch the Namespace instance
 	instance := &corev1.Namespace{}
-	// Funky namespace stuff here, this should work?
+	// Funky NamespacedName stuff here, this should work?
 	//err := r.GetClient().Get(context.TODO(), request.NamespacedName, instance)
 	err := r.GetClient().Get(context.TODO(), types.NamespacedName{Name: request.NamespacedName.Name}, instance)
 	if err != nil {
@@ -122,11 +122,9 @@ func (r *ReconcileNamespace) Reconcile(request reconcile.Request) (reconcile.Res
 			// Request object not found, could have been deleted after reconcile request.
 			// Owned objects are automatically garbage collected. For additional cleanup logic use finalizers.
 			// Return and don't requeue
-			reqLogger.Info("Reconciling Namespace 1")
 			return reconcile.Result{}, nil
 		}
 		// Error reading the object - requeue the request.
-		reqLogger.Info("Reconciling Namespace 2")
 		return reconcile.Result{}, err
 	}
 
@@ -139,15 +137,24 @@ func (r *ReconcileNamespace) Reconcile(request reconcile.Request) (reconcile.Res
 	defaultNetworkPolicy := getDenyDefaultNetworkPolicy(instance)
 	err = r.CreateOrUpdateResource(instance, instance.GetNamespace(), defaultNetworkPolicy)
 	if err != nil {
-		log.Error(err, "unable to create DenyDefaultNetworkPolicy", "NetworkPolicy", defaultNetworkPolicy)
+		log.Error(err, "unable to create DefaultDenyNetworkPolicy", "NetworkPolicy", defaultNetworkPolicy)
+		return r.manageError(err, instance)
 	}
 
 	// Allow from self
-	if instance.Annotations[allowFromSelfLabel] == "true" {
-		allowFromSelfNetworkPolicy := getAllowFromSelfNetworkPolicy(instance)
+	allowFromSelfNetworkPolicy := getAllowFromSelfNetworkPolicy(instance)
+
+	if instance.Annotations[allowFromSelfLabel] == "true" && instance.Annotations[microsgmentationAnnotation] == "true" {
 		err = r.CreateOrUpdateResource(instance, instance.GetNamespace(), allowFromSelfNetworkPolicy)
 		if err != nil {
 			log.Error(err, "unable to create AllowFromSelfNetworkPolicy", "NetworkPolicy", allowFromSelfNetworkPolicy)
+			return r.manageError(err, instance)
+		}
+	} else {
+		err = r.DeleteResource(allowFromSelfNetworkPolicy)
+		if err != nil {
+			log.Error(err, "unable to delete AllowFromSelfNetworkPolicy", "NetworkPolicy", allowFromSelfNetworkPolicy)
+			return r.manageError(err, instance)
 		}
 	}
 
@@ -172,7 +179,7 @@ func (r *ReconcileNamespace) Reconcile(request reconcile.Request) (reconcile.Res
 }
 
 func getDenyDefaultNetworkPolicy(namespace *corev1.Namespace) *networking.NetworkPolicy {
-	networkPolicy := &networking.NetworkPolicy{
+	defaultNetworkPolicy := &networking.NetworkPolicy{
 		TypeMeta: metav1.TypeMeta{
 			APIVersion: "networking.k8s.io/v1",
 			Kind:       "NetworkPolicy",
@@ -187,13 +194,13 @@ func getDenyDefaultNetworkPolicy(namespace *corev1.Namespace) *networking.Networ
 			Ingress:     []networking.NetworkPolicyIngressRule{},
 		},
 	}
-	networkPolicy.Spec.Ingress = append(networkPolicy.Spec.Ingress, networking.NetworkPolicyIngressRule{})
+	defaultNetworkPolicy.Spec.Ingress = append(defaultNetworkPolicy.Spec.Ingress, networking.NetworkPolicyIngressRule{})
 
-	return networkPolicy
+	return defaultNetworkPolicy
 }
 
 func getAllowFromSelfNetworkPolicy(namespace *corev1.Namespace) *networking.NetworkPolicy {
-	networkPolicy := &networking.NetworkPolicy{
+	allowFromSelfNetworkPolicy := &networking.NetworkPolicy{
 		TypeMeta: metav1.TypeMeta{
 			APIVersion: "networking.k8s.io/v1",
 			Kind:       "NetworkPolicy",
@@ -214,9 +221,9 @@ func getAllowFromSelfNetworkPolicy(namespace *corev1.Namespace) *networking.Netw
 			NamespaceSelector: getLabelSelectorFromAnnotation("name=" + namespace.GetName()),
 		}},
 	}
-	networkPolicy.Spec.Ingress = append(networkPolicy.Spec.Ingress, networkPolicyIngressRule)
+	allowFromSelfNetworkPolicy.Spec.Ingress = append(allowFromSelfNetworkPolicy.Spec.Ingress, networkPolicyIngressRule)
 
-	return networkPolicy
+	return allowFromSelfNetworkPolicy
 }
 
 func getNetworkPolicy(namespace *corev1.Namespace) *networking.NetworkPolicy {

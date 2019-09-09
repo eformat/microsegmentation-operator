@@ -3,7 +3,7 @@ kind: Namespace
 metadata:
   annotations:
     microsegmentation-operator.redhat-cop.io/microsegmentation: "true"  
-    microsegmentation-operator.redhat-cop.io/inbound-namespace-labels: name=abc,frontend-user=customers
+    microsegmentation-operator.redhat-cop.io/inbound-namespace-labels: name=abc,frontend-user=customers,name=default
     microsegmentation-operator.redhat-cop.io/allow-from-self: "true"
   name: test
 ---
