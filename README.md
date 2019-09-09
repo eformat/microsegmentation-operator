@@ -82,7 +82,7 @@ It should be relatively common to use the `additional-inbound-ports` annotation 
 See test directory for an example.
 
 ```
-oc apply -f test/simple-microsegmentatiom.yaml
+oc apply -f test/simple-microsegmentation.yaml
 ```
 
 ## Local Development
