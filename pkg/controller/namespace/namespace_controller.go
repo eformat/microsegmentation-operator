@@ -5,12 +5,13 @@ import (
 	"strings"
 	"time"
 
+	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
 
 	"github.com/redhat-cop/operator-utils/pkg/util"
 	corev1 "k8s.io/api/core/v1"
 	networking "k8s.io/api/networking/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/event"
@@ -28,6 +29,7 @@ const annotationBase = "microsegmentation-operator.redhat-cop.io"
 const microsgmentationAnnotation = annotationBase + "/microsegmentation"
 const inboundNamespaceLabels = annotationBase + "/inbound-namespace-labels"
 const outboundNamespaceLabels = annotationBase + "/outbound-namespace-labels"
+const allowFromSelfLabel = annotationBase + "/allow-from-self"
 const controllerName = "namespace-controller"
 
 // Add creates a new Namespace Controller and adds it to the Manager. The Manager will set fields on the Controller
@@ -83,8 +85,7 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 		return err
 	}
 
-	// TODO(user): Modify this to be the types you create that are owned by the primary resource
-	// Watch for changes to secondary resource Pods and requeue the owner Namespace
+	// Watch for changes to secondary resource and requeue the owner Namespace
 	err = c.Watch(&source.Kind{Type: &networking.NetworkPolicy{}}, &handler.EnqueueRequestForOwner{
 		IsController: true,
 		OwnerType:    &corev1.Namespace{},
@@ -108,39 +109,49 @@ type ReconcileNamespace struct {
 // The Controller will requeue the Request to be processed again if the returned error is non-nil or
 // Result.Requeue is true, otherwise upon completion it will remove the work from the queue.
 func (r *ReconcileNamespace) Reconcile(request reconcile.Request) (reconcile.Result, error) {
-	reqLogger := log.WithValues("Request.Namespace", request.Namespace, "Request.Name", request.Name)
+	reqLogger := log.WithValues("Request.Namespace", request.Namespace, "Request.Name", request.Name, "Request.NamespacedName", request.NamespacedName)
 	reqLogger.Info("Reconciling Namespace")
 
 	// Fetch the Namespace instance
 	instance := &corev1.Namespace{}
-	request.NamespacedName.Namespace = ""
-	err := r.GetClient().Get(context.TODO(), request.NamespacedName, instance)
+	// Funky namespace stuff here, this should work?
+	//err := r.GetClient().Get(context.TODO(), request.NamespacedName, instance)
+	err := r.GetClient().Get(context.TODO(), types.NamespacedName{Name: request.NamespacedName.Name}, instance)
 	if err != nil {
 		if errors.IsNotFound(err) {
 			// Request object not found, could have been deleted after reconcile request.
 			// Owned objects are automatically garbage collected. For additional cleanup logic use finalizers.
 			// Return and don't requeue
-			reqLogger.Info("Reconciling Namespace 2")
+			reqLogger.Info("Reconciling Namespace 1")
 			return reconcile.Result{}, nil
 		}
 		// Error reading the object - requeue the request.
+		reqLogger.Info("Reconciling Namespace 2")
 		return reconcile.Result{}, err
 	}
-	reqLogger.Info("Reconciling Namespace 3")
 
 	// The object is being deleted
 	if !instance.ObjectMeta.DeletionTimestamp.IsZero() {
 		return reconcile.Result{}, nil
 	}
 
-	// Define a new default networkpolicy
+	// Define a default deny all networkpolicy
 	defaultNetworkPolicy := getDenyDefaultNetworkPolicy(instance)
 	err = r.CreateOrUpdateResource(instance, instance.GetNamespace(), defaultNetworkPolicy)
 	if err != nil {
 		log.Error(err, "unable to create DenyDefaultNetworkPolicy", "NetworkPolicy", defaultNetworkPolicy)
 	}
 
-	// Define a new object
+	// Allow from self
+	if instance.Annotations[allowFromSelfLabel] == "true" {
+		allowFromSelfNetworkPolicy := getAllowFromSelfNetworkPolicy(instance)
+		err = r.CreateOrUpdateResource(instance, instance.GetNamespace(), allowFromSelfNetworkPolicy)
+		if err != nil {
+			log.Error(err, "unable to create AllowFromSelfNetworkPolicy", "NetworkPolicy", allowFromSelfNetworkPolicy)
+		}
+	}
+
+	// Other Namespace NetworkPolicy
 	networkPolicy := getNetworkPolicy(instance)
 
 	if instance.Annotations[microsgmentationAnnotation] == "true" {
@@ -177,6 +188,33 @@ func getDenyDefaultNetworkPolicy(namespace *corev1.Namespace) *networking.Networ
 		},
 	}
 	networkPolicy.Spec.Ingress = append(networkPolicy.Spec.Ingress, networking.NetworkPolicyIngressRule{})
+
+	return networkPolicy
+}
+
+func getAllowFromSelfNetworkPolicy(namespace *corev1.Namespace) *networking.NetworkPolicy {
+	networkPolicy := &networking.NetworkPolicy{
+		TypeMeta: metav1.TypeMeta{
+			APIVersion: "networking.k8s.io/v1",
+			Kind:       "NetworkPolicy",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "allow-from-self",
+			Namespace: namespace.GetName(),
+		},
+		Spec: networking.NetworkPolicySpec{
+			PodSelector: metav1.LabelSelector{},
+			Egress:      []networking.NetworkPolicyEgressRule{},
+			Ingress:     []networking.NetworkPolicyIngressRule{},
+		},
+	}
+
+	networkPolicyIngressRule := networking.NetworkPolicyIngressRule{
+		From: []networking.NetworkPolicyPeer{networking.NetworkPolicyPeer{
+			NamespaceSelector: getLabelSelectorFromAnnotation("name=" + namespace.GetName()),
+		}},
+	}
+	networkPolicy.Spec.Ingress = append(networkPolicy.Spec.Ingress, networkPolicyIngressRule)
 
 	return networkPolicy
 }

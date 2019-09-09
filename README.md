@@ -18,6 +18,7 @@ The NetworkPolicy object can be tweaked with the following additional annotation
 | `microsegmentation-operator.redhat-cop.io/outbound-pod-labels`  | comma separated list of labels to be used as label selectors for allowed outbound pods; e.g. `label1=value1,label2=value2`  ||   |   |
 | `microsegmentation-operator.redhat-cop.io/outbound-namespace-labels`  | comma separated list of labels to be used as label selectors for allowed outbound namespaces; e.g. `label1=value1,label2=value2`  |
 | `microsegmentation-operator.redhat-cop.io/outbound-ports`  | comma separated list of allowed outbound ports expressed in this format: *port/protocol*; e.g. `8888/TCP,9999/UDP`  |
+| `microsegmentation-operator.redhat-cop.io/allow-from-self`  | allow traffic from within the same namespace |
 
 Inbound/outbound ports and in `AND` with corresponding inbound/outbound pod label selectors and namespace label selectors.
 

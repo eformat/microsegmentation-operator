@@ -24,7 +24,7 @@ native-test: generate fmt vet
 
 # Build manager binary
 manager-local: generate fmt vet
-	go build -o build/_output/bin/microsegmentation-operator-local  -ldflags $(LDFLAGS) github.com/eformat/microsegmentation-operator/cmd/manager
+	go build -o build/_output/bin/microsegmentation-operator-local -gcflags="all=-N -l" -ldflags $(LDFLAGS) github.com/eformat/microsegmentation-operator/cmd/manager
 
 # Build manager binary
 manager: generate fmt vet

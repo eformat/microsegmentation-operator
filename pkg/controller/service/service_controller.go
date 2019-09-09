@@ -30,9 +30,7 @@ const annotationBase = "microsegmentation-operator.redhat-cop.io"
 const microsgmentationAnnotation = annotationBase + "/microsegmentation"
 const additionalInboundPortsAnnotation = annotationBase + "/additional-inbound-ports"
 const inboundPodLabels = annotationBase + "/inbound-pod-labels"
-const inboundNamespaceLabels = annotationBase + "/inbound-namespace-labels"
 const outboundPodLabels = annotationBase + "/outbound-pod-labels"
-const outboundNamespaceLabels = annotationBase + "/outbound-namespace-labels"
 const outboundPorts = annotationBase + "/outbound-ports"
 const controllerName = "service-controller"
 
@@ -134,6 +132,11 @@ func (r *ReconcileService) Reconcile(request reconcile.Request) (reconcile.Resul
 		return reconcile.Result{}, err
 	}
 
+	// The object is being deleted
+	if !instance.ObjectMeta.DeletionTimestamp.IsZero() {
+		return reconcile.Result{}, nil
+	}
+
 	// Define a new Pod object
 	networkPolicy := getNetworkPolicy(instance)
 
@@ -172,19 +175,19 @@ func getNetworkPolicy(service *corev1.Service) *networking.NetworkPolicy {
 			Ingress: []networking.NetworkPolicyIngressRule{},
 		},
 	}
-	_, ok1 := service.Annotations[inboundPodLabels]
-	_, ok2 := service.Annotations[inboundNamespaceLabels]
+	// _, ok1 := service.Annotations[inboundPodLabels]
+	// _, ok2 := service.Annotations[inboundNamespaceLabels]
 
-	if !ok1 && !ok2 {
-		//if there are no pod or namespaces annotations we create one for inbound traffic only from the current namespace
-		networkPolicyIngressRule := networking.NetworkPolicyIngressRule{
-			From: []networking.NetworkPolicyPeer{networking.NetworkPolicyPeer{
-				PodSelector: &metav1.LabelSelector{},
-			}},
-			Ports: append(getPortsFromService(service.Spec.Ports), getPortsFromAnnotation(service.Annotations[additionalInboundPortsAnnotation])...),
-		}
-		networkPolicy.Spec.Ingress = append(networkPolicy.Spec.Ingress, networkPolicyIngressRule)
-	}
+	// if !ok1 && !ok2 {
+	// 	//if there are no pod or namespaces annotations we create one for inbound traffic only from the current namespace
+	// 	networkPolicyIngressRule := networking.NetworkPolicyIngressRule{
+	// 		From: []networking.NetworkPolicyPeer{networking.NetworkPolicyPeer{
+	// 			PodSelector: &metav1.LabelSelector{},
+	// 		}},
+	// 		Ports: append(getPortsFromService(service.Spec.Ports), getPortsFromAnnotation(service.Annotations[additionalInboundPortsAnnotation])...),
+	// 	}
+	// 	networkPolicy.Spec.Ingress = append(networkPolicy.Spec.Ingress, networkPolicyIngressRule)
+	// }
 
 	if inboundPodLabels, ok := service.Annotations[inboundPodLabels]; ok {
 		networkPolicyIngressRule := networking.NetworkPolicyIngressRule{
