@@ -4,11 +4,9 @@ metadata:
   name: microsegmentation-operator
 rules:
 - apiGroups:
-  - ""
+  - "*"
   resources:
-  - events
-  - services
-  - namespaces
+  - "*"
   verbs:
   - "*" 
 - apiGroups:

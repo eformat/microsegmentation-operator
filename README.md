@@ -1,181 +1,5 @@
 # Microsegmentation Operator
 
-[![Build Status](https://travis-ci.org/redhat-cop/microsegmentation-operator.svg?branch=master)](https://travis-ci.org/redhat-cop/microsegmentation-operator) [![Docker Repository on Quay](https://quay.io/repository/redhat-cop/microsegmentation-operator/status "Docker Repository on Quay")](https://quay.io/repository/redhat-cop/microsegmentation-operator)
-
-The microsegmentation operator allows to create [NetworkPolicies](https://kubernetes.io/docs/concepts/services-networking/network-policies/) rules starting from [Services](https://kubernetes.io/docs/concepts/services-networking/service/).
-
-This feature is activated by this annotation: `microsegmentation-operator.redhat-cop.io/microsegmentation: "true"`.
-
-By default the generated NetworkPolicy will allow traffic from pods in the same namespace and to the ports described in the service.
-
-The NetworkPolicy object can be tweaked with the following additional annotations:
-
-| Annotation  | Description  |
-| - | - |
-| `microsegmentation-operator.redhat-cop.io/additional-inbound-ports`  | comma separated list of allowed inbound ports expressed in this format: *port/protocol*; e.g. `8888/TCP,9999/UDP`  |
-|  `microsegmentation-operator.redhat-cop.io/inbound-pod-labels` | comma separated list of labels to be used as label selectors for allowed inbound pods; e.g. `label1=value1,label2=value2`  |
-| `microsegmentation-operator.redhat-cop.io/inbound-namespace-labels`  | comma separated list of labels to be used as label selectors for allowed inbound namespaces; e.g. `label1=value1,label2=value2`  |
-| `microsegmentation-operator.redhat-cop.io/outbound-pod-labels`  | comma separated list of labels to be used as label selectors for allowed outbound pods; e.g. `label1=value1,label2=value2`  ||   |   |
-| `microsegmentation-operator.redhat-cop.io/outbound-namespace-labels`  | comma separated list of labels to be used as label selectors for allowed outbound namespaces; e.g. `label1=value1,label2=value2`  |
-| `microsegmentation-operator.redhat-cop.io/outbound-ports`  | comma separated list of allowed outbound ports expressed in this format: *port/protocol*; e.g. `8888/TCP,9999/UDP`  |
-| `microsegmentation-operator.redhat-cop.io/allow-from-self`  | allow traffic from within the same namespace |
-
-Inbound/outbound ports and in `AND` with corresponding inbound/outbound pod label selectors and namespace label selectors.
-
-The pod label selector and the namespace label selector are in OR with each other.
-
-It should be relatively common to use the `additional-inbound-ports` annotation to model those situation where a pod exposes a port that should not be load balanced.
-
-All the other annotation are there to provide flexibility, but should not be used extensively. If you find yourself making high use of them, you have probably reached the point where you should create NetworkPolicies directly.
-
-## Examples
-
-The following service:
-
-```yaml
-apiVersion: v1
-kind: Service
-metadata:
-  annotations:
-    microsegmentation-operator.redhat-cop.io/microsegmentation: "true"
-  name: test1
-spec:
-  ports:
-  - name: https
-    port: 443
-    protocol: TCP
-    targetPort: 8443
-  - name: https1
-    port: 4431
-    protocol: TCP
-    targetPort: 8431
-  selector:
-    app: console
-    component: ui
-```
-
-produces the following NetworkPolicy:
-
-```yaml
-apiVersion: extensions/v1beta1
-kind: NetworkPolicy
-metadata:
-  name: test1
-spec:
-  ingress:
-  - from:
-    - podSelector: {}
-    ports:
-    - port: 8443
-      protocol: TCP
-    - port: 8431
-      protocol: TCP
-  podSelector:
-    matchLabels:
-      app: console
-      component: ui
-  policyTypes:
-  - Ingress
-```
-
-The following service:
-
-```yaml
-apiVersion: v1
-kind: Service
-metadata:
-  annotations:
-    microsegmentation-operator.redhat-cop.io/microsegmentation: "true"
-    microsegmentation-operator.redhat-cop.io/additional-inbound-ports: 123/TCP,456/UDP
-    microsegmentation-operator.redhat-cop.io/inbound-pod-labels: app=gateway,application=3scale
-    microsegmentation-operator.redhat-cop.io/inbound-namespace-labels: frontend=abc,frontend-user=customers
-    microsegmentation-operator.redhat-cop.io/outbound-pod-labels: app=database,application=db2
-    microsegmentation-operator.redhat-cop.io/outbound-namespace-labels: backend=cfg,backend-user=internal
-    microsegmentation-operator.redhat-cop.io/outbound-ports: 789/TCP,012/UDP
-  name: test2
-spec:
-  ports:
-  - name: https
-    port: 443
-    protocol: TCP
-    targetPort: 8443
-  - name: https1
-    port: 4431
-    protocol: TCP
-    targetPort: 8431
-  selector:
-    app: console
-    component: ui
-```
-
-produces the following NetworkPolicy:
-
-```yaml
-apiVersion: extensions/v1beta1
-kind: NetworkPolicy
-metadata:
-  generation: 2
-  name: test2
-spec:
-  egress:
-  - ports:
-    - port: 789
-      protocol: TCP
-    - port: 12
-      protocol: UDP
-    to:
-    - podSelector:
-        matchLabels:
-          app: database
-          application: db2
-  - ports:
-    - port: 789
-      protocol: TCP
-    - port: 12
-      protocol: UDP
-    to:
-    - namespaceSelector:
-        matchLabels:
-          backend: cfg
-          backend-user: internal
-  ingress:
-  - from:
-    - podSelector:
-        matchLabels:
-          app: gateway
-          application: 3scale
-    ports:
-    - port: 8443
-      protocol: TCP
-    - port: 8431
-      protocol: TCP
-    - port: 123
-      protocol: TCP
-    - port: 456
-      protocol: UDP
-  - from:
-    - namespaceSelector:
-        matchLabels:
-          frontend: abc
-          frontend-user: customers
-    ports:
-    - port: 8443
-      protocol: TCP
-    - port: 8431
-      protocol: TCP
-    - port: 123
-      protocol: TCP
-    - port: 456
-      protocol: UDP
-  podSelector:
-    matchLabels:
-      app: console
-      component: ui
-  policyTypes:
-  - Ingress
-  - Egress
-```
-
 ## Deploying the Operator
 
 This is a cluster-level operator that you can deploy in any namespace, `microsegmentation-operator` is recommended.
@@ -187,7 +11,78 @@ oc new-project microsegmentation-operator
 Deploy the cluster resources. Given that a number of elevated permissions are required to resources at a cluster scope the account you are currently logged in must have elevated rights.
 
 ```shell
-oc apply -f deploy
+oc apply -f deploy/
+```
+
+`OpenShift implements v1 of NetworkPolicy` : so egress rules, ipblock are not implemeneted by the default openshift-sdn.
+
+## Configuring Operator Using Annotations
+
+[![Build Status](https://travis-ci.org/redhat-cop/microsegmentation-operator.svg?branch=master)](https://travis-ci.org/redhat-cop/microsegmentation-operator) [![Docker Repository on Quay](https://quay.io/repository/redhat-cop/microsegmentation-operator/status "Docker Repository on Quay")](https://quay.io/repository/redhat-cop/microsegmentation-operator)
+
+The microsegmentation operator allows to create [NetworkPolicies](https://kubernetes.io/docs/concepts/services-networking/network-policies/) rules starting from [Namespaces](https://kubernetes.io/docs/concepts/overview/working-with-objects/namespaces/) and/or [Services](https://kubernetes.io/docs/concepts/services-networking/service/).
+
+This feature is activated by this annotation: `microsegmentation-operator.redhat-cop.io/microsegmentation: "true"`.
+
+```
+oc annotate namespace test microsegmentation-operator.redhat-cop.io/microsegmentation='true'
+# AND/OR
+oc annotate service test-service microsegmentation-operator.redhat-cop.io/microsegmentation='true'
+```
+
+NetworkPolicy can be controlled by annotation `Namespace` and/or `Service`. If you wish to disable or delete NetworkPolicy, set the annotation to `false`.
+
+#### Default Deny NetworkPolicy
+
+By default when enabled a `deny-by-default` NetworkPolicy is applied (secure by default). This is equivalent to the following policy:
+
+```
+oc apply -f - <<'EOF'
+kind: NetworkPolicy
+apiVersion: networking.k8s.io/v1
+metadata:
+  name: deny-by-default
+spec:
+  podSelector:
+  ingress: []
+EOF
+```
+
+You would then layer other policy into your namespace to allow traffic as follows in the next sections. Namespace and Port/Protocol network policy are created as separate NetworkPolicy objects.
+
+#### Namespace control
+
+The Namespace annotation controls access from other namespaces using annotations and namespace labels. Normal users can be restricted from editing namespaces (but will normally have self-service admin/edit access to services) within a cluster.
+
+| Annotation  | Description  |
+| - | - |
+| `microsegmentation-operator.redhat-cop.io/inbound-namespace-labels`  | comma separated list of labels to be used as label selectors for allowed inbound namespaces; e.g. `key1=value1,key2=value2`  |
+| `microsegmentation-operator.redhat-cop.io/outbound-namespace-labels`  | comma separated list of labels to be used as label selectors for allowed outbound namespaces; e.g. `key1=value1,key2=value2`  |
+| `microsegmentation-operator.redhat-cop.io/allow-from-self`  | allow traffic from within the same namespace (true|false) |
+
+#### Service control
+
+Port/Protocol NetworkPolicy controls access to ports and protocols described on the service using annotations.
+
+The NetworkPolicy object can be tweaked with the following additional annotations:
+
+| Annotation  | Description  |
+| - | - |
+| `microsegmentation-operator.redhat-cop.io/additional-inbound-ports`  | comma separated list of allowed inbound ports expressed in this format: *port/protocol*; e.g. `8888/TCP,9999/UDP`  |
+|  `microsegmentation-operator.redhat-cop.io/inbound-pod-labels` | comma separated list of labels to be used as label selectors for allowed inbound pods; e.g. `key1=value1,key2=value2`  |
+| `microsegmentation-operator.redhat-cop.io/outbound-pod-labels`  | comma separated list of labels to be used as label selectors for allowed outbound pods; e.g. `key1=value1,key2=value2`  ||   |   |
+| `microsegmentation-operator.redhat-cop.io/outbound-ports`  | comma separated list of allowed outbound ports expressed in this format: *port/protocol*; e.g. `8888/TCP,9999/UDP`  |
+
+Inbound/outbound ports are `AND` 'ed with corresponding inbound/outbound pod label selectors.
+
+It should be relatively common to use the `additional-inbound-ports` annotation to model those situation where a pod exposes a port that should not be load balanced.
+
+## Examples
+
+See test directory for an example.
+
+```
+oc apply -f test/simple-microsegmentatiom.yaml
 ```
 
 ## Local Development
@@ -204,4 +99,30 @@ Using the [operator-sdk](https://github.com/operator-framework/operator-sdk), ru
 
 ```shell
 operator-sdk up local --namespace "test" --verbose
+```
+
+Use delve debugger
+
+```
+operator-sdk up local --namespace "test" --verbose --enable-delve
+```
+
+With a remote debug `launch.json` in vscode:
+
+```
+    {
+      "name": "Launch remote",
+      "type": "go",
+      "request": "launch",
+      "mode": "remote",
+      "port": 2345,
+      "host": "127.0.0.1",
+      "remotePath": "",
+      "program": "${workspaceFolder}/build/_output/bin/microsegmentation-operator-local",
+      "trace": "log",
+      "env": {
+        "GOPATH": "/usr/bin/go",
+        "WATCH_NAMESPACE": "test"
+      }
+    }
 ```
