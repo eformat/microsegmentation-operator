@@ -60,6 +60,20 @@ The Namespace annotation controls access from other namespaces using annotations
 | `microsegmentation-operator.redhat-cop.io/outbound-namespace-labels`  | comma separated list of labels to be used as label selectors for allowed outbound namespaces; e.g. `key1=value1,key2=value2`  |
 | `microsegmentation-operator.redhat-cop.io/allow-from-self`  | allow traffic from within the same namespace (`true\|false`) |
 
+Example ingress policy:
+
+```
+ - ingress
+   - from:
+     - namespaceSelector:
+         matchLabels:
+           key1: value1
+   - from:
+     - namespaceSelector:
+         matchLabels:
+           key2: value2
+```
+
 #### Service control
 
 Port/Protocol NetworkPolicy controls access to ports and protocols described on the service using annotations.
