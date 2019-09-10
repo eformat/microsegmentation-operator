@@ -58,7 +58,7 @@ The Namespace annotation controls access from other namespaces using annotations
 | - | - |
 | `microsegmentation-operator.redhat-cop.io/inbound-namespace-labels`  | comma separated list of labels to be used as label selectors for allowed inbound namespaces; e.g. `key1=value1,key2=value2`  |
 | `microsegmentation-operator.redhat-cop.io/outbound-namespace-labels`  | comma separated list of labels to be used as label selectors for allowed outbound namespaces; e.g. `key1=value1,key2=value2`  |
-| `microsegmentation-operator.redhat-cop.io/allow-from-self`  | allow traffic from within the same namespace (true\|false) |
+| `microsegmentation-operator.redhat-cop.io/allow-from-self`  | allow traffic from within the same namespace (`true\|false`) |
 
 #### Service control
 
