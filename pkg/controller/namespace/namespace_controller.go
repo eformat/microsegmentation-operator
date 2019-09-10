@@ -256,26 +256,81 @@ func getNetworkPolicy(namespace *corev1.Namespace) *networking.NetworkPolicy {
 
 	if inboundNamespaceLabels, ok := namespace.Annotations[inboundNamespaceLabels]; ok {
 		networkPolicy.ObjectMeta.Name = "ingress-from-namespaces"
-		networkPolicyIngressRule := networking.NetworkPolicyIngressRule{
-			From: []networking.NetworkPolicyPeer{networking.NetworkPolicyPeer{
-				NamespaceSelector: getLabelSelectorFromAnnotation(inboundNamespaceLabels),
-			}},
-		}
-		networkPolicy.Spec.Ingress = append(networkPolicy.Spec.Ingress, networkPolicyIngressRule)
+		networkPolicy.Spec.Ingress = getIngressRulesFromLabels(inboundNamespaceLabels)
 	}
 	if outboundNamespaceLabels, ok := namespace.Annotations[outboundNamespaceLabels]; ok {
 		networkPolicy.ObjectMeta.Name = "egress-to-namespaces"
-		networkPolicyEgressRule := networking.NetworkPolicyEgressRule{
-			To: []networking.NetworkPolicyPeer{networking.NetworkPolicyPeer{
-				NamespaceSelector: getLabelSelectorFromAnnotation(outboundNamespaceLabels),
-			}},
-		}
-		networkPolicy.Spec.Egress = append(networkPolicy.Spec.Egress, networkPolicyEgressRule)
+		networkPolicy.Spec.Egress = getEgressRulesFromLabels(outboundNamespaceLabels)
 	}
 
 	return networkPolicy
 }
 
+/*
+   - from:
+     - namespaceSelector:
+         matchLabels:
+           key1: value1
+   - from:
+     - namespaceSelector:
+         matchLabels:
+           key2: value2
+*/
+func getIngressRulesFromLabels(labels string) []networking.NetworkPolicyIngressRule {
+	labelsStrings := strings.Split(labels, ",")
+	rules := make([]networking.NetworkPolicyIngressRule, 0)
+	for _, labelString := range labelsStrings {
+		labelMap := map[string]string{}
+		if strings.Index(labelString, "=") < 1 {
+			log.Error(fmt.Errorf("Labels: %s ", labels), "FATAL: check namespace annotations - missing = sign ?", labels)
+			return make([]networking.NetworkPolicyIngressRule, 0)
+		}
+		label := labelString[:strings.Index(labelString, "=")]
+		value := labelString[strings.Index(labelString, "=")+1:]
+		labelMap[label] = value
+		lm := &metav1.LabelSelector{
+			MatchLabels: labelMap,
+		}
+		rules = append(rules, networking.NetworkPolicyIngressRule{
+			From: []networking.NetworkPolicyPeer{networking.NetworkPolicyPeer{
+				NamespaceSelector: lm,
+			}},
+		})
+	}
+	return rules
+}
+
+func getEgressRulesFromLabels(labels string) []networking.NetworkPolicyEgressRule {
+	labelsStrings := strings.Split(labels, ",")
+	rules := make([]networking.NetworkPolicyEgressRule, 0)
+	for _, labelString := range labelsStrings {
+		labelMap := map[string]string{}
+		if strings.Index(labelString, "=") < 1 {
+			log.Error(fmt.Errorf("Labels: %s ", labels), "FATAL: check namespace annotations - missing = sign ?", labels)
+			return make([]networking.NetworkPolicyEgressRule, 0)
+		}
+		label := labelString[:strings.Index(labelString, "=")]
+		value := labelString[strings.Index(labelString, "=")+1:]
+		labelMap[label] = value
+		lm := &metav1.LabelSelector{
+			MatchLabels: labelMap,
+		}
+		rules = append(rules, networking.NetworkPolicyEgressRule{
+			To: []networking.NetworkPolicyPeer{networking.NetworkPolicyPeer{
+				NamespaceSelector: lm,
+			}},
+		})
+	}
+	return rules
+}
+
+/*
+   - from:
+     - namespaceSelector:
+         matchLabels:
+					 key1: value1
+					 key2: value2
+*/
 func getLabelSelectorFromAnnotation(labels string) *metav1.LabelSelector {
 	// this annotation looks like this: label1=value,label2=value2
 	labelMap := map[string]string{}
