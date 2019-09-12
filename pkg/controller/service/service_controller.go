@@ -56,6 +56,7 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 		return err
 	}
 
+	// FIXME - add in ports annotation
 	isAnnotatedService := predicate.Funcs{
 		UpdateFunc: func(e event.UpdateEvent) bool {
 			_, ok := e.ObjectOld.(*corev1.Service)
@@ -204,10 +205,7 @@ func getNetworkPolicy(service *corev1.Service) *networking.NetworkPolicy {
 
 	} else {
 		networkPolicyIngressRule := networking.NetworkPolicyIngressRule{
-			From: []networking.NetworkPolicyPeer{networking.NetworkPolicyPeer{
-				PodSelector: &metav1.LabelSelector{},
-			}},
-			Ports: append(getPortsFromService(service.Spec.Ports), getPortsFromAnnotation(service.Annotations[additionalInboundPortsAnnotation])...),
+			Ports: append([]networking.NetworkPolicyPort{}, getPortsFromAnnotation(service.Annotations[additionalInboundPortsAnnotation])...),
 		}
 		networkPolicy.Spec.Ingress = append(networkPolicy.Spec.Ingress, networkPolicyIngressRule)
 	}
