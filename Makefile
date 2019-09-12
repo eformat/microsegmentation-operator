@@ -77,12 +77,12 @@ docker-push-release:  docker-tag-release
 	@docker push $(REPOSITORY):latest
 
 # Build the docker image
-docker-build:
+docker-build: manager
 	podman build . -t ${IMG} -f build/Dockerfile
 
 # Push the docker image
-docker-push:
-	docker push ${IMG}
+docker-push: docker-build
+	podman push ${IMG}
 
 # Travis Latest Tag Deployment
 travis-latest-deploy: docker-login docker-build docker-push
