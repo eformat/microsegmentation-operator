@@ -202,6 +202,14 @@ func getNetworkPolicy(service *corev1.Service) *networking.NetworkPolicy {
 		}
 		networkPolicy.Spec.Ingress = append(networkPolicy.Spec.Ingress, networkPolicyIngressRule)
 
+	} else {
+		networkPolicyIngressRule := networking.NetworkPolicyIngressRule{
+			From: []networking.NetworkPolicyPeer{networking.NetworkPolicyPeer{
+				PodSelector: &metav1.LabelSelector{},
+			}},
+			Ports: append(getPortsFromService(service.Spec.Ports), getPortsFromAnnotation(service.Annotations[additionalInboundPortsAnnotation])...),
+		}
+		networkPolicy.Spec.Ingress = append(networkPolicy.Spec.Ingress, networkPolicyIngressRule)
 	}
 	// if inboundNamespaceLabels, ok := service.Annotations[inboundNamespaceLabels]; ok {
 	// 	networkPolicyIngressRule := networking.NetworkPolicyIngressRule{
