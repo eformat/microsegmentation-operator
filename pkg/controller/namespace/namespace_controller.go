@@ -139,11 +139,13 @@ func (r *ReconcileNamespace) Reconcile(request reconcile.Request) (reconcile.Res
 	}
 
 	// Define a default deny all networkpolicy
-	defaultNetworkPolicy := getDenyDefaultNetworkPolicy(instance)
-	err = r.CreateOrUpdateResource(instance, instance.GetNamespace(), defaultNetworkPolicy)
-	if err != nil {
-		log.Error(err, "unable to create DefaultDenyNetworkPolicy", "NetworkPolicy", defaultNetworkPolicy)
-		return r.manageError(err, instance)
+	if instance.Annotations[microsgmentationAnnotation] == "true" {
+		defaultNetworkPolicy := getDenyDefaultNetworkPolicy(instance)
+		err = r.CreateOrUpdateResource(instance, instance.GetNamespace(), defaultNetworkPolicy)
+		if err != nil {
+			log.Error(err, "unable to create DefaultDenyNetworkPolicy", "NetworkPolicy", defaultNetworkPolicy)
+			return r.manageError(err, instance)
+		}
 	}
 
 	// Allow from self
