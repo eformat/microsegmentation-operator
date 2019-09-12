@@ -2,14 +2,13 @@ module github.com/eformat/microsegmentation-operator
 
 require (
 	github.com/NYTimes/gziphandler v1.0.1 // indirect
-	github.com/operator-framework/operator-sdk v0.10.1-0.20190909224314-b3c2cc0bef95
+	github.com/operator-framework/operator-sdk v0.10.0
 	github.com/redhat-cop/operator-utils v0.0.0-20190827162636-51e6b0c32776
 	github.com/spf13/pflag v1.0.3
-	k8s.io/api v0.0.0-20190612125737-db0771252981
-	k8s.io/apimachinery v0.0.0-20190612125636-6a5db36e93ad
-	k8s.io/client-go v11.0.0+incompatible
-	k8s.io/kube-openapi v0.0.0-20190603182131-db7b694dc208 // indirect
-	sigs.k8s.io/controller-runtime v0.1.12
+	k8s.io/api v0.0.0-20190905160310-fb749d2f1064
+	k8s.io/apimachinery v0.0.0-20190831074630-461753078381
+	k8s.io/client-go v11.0.1-0.20190409021438-1a26190bd76a+incompatible
+	sigs.k8s.io/controller-runtime v0.2.1
 )
 
 // Pinned to kubernetes-1.13.4

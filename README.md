@@ -91,6 +91,8 @@ Inbound/outbound ports are `AND` 'ed with corresponding inbound/outbound pod lab
 
 It should be relatively common to use the `additional-inbound-ports` annotation to model those situation where a pod exposes a port that should not be load balanced.
 
+If `inbound-pod-labels` annotation is used, this selects matching pods along with the `additional-inbound-ports`.
+
 ## Examples
 
 See test directory for an example.

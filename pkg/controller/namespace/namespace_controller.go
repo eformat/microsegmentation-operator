@@ -10,9 +10,10 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 
+	networkv1 "k8s.io/api/networking/v1"
+
 	"github.com/redhat-cop/operator-utils/pkg/util"
 	corev1 "k8s.io/api/core/v1"
-	networking "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/event"
@@ -91,7 +92,7 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 	}
 
 	// Watch for changes to secondary resource and requeue the owner Namespace
-	err = c.Watch(&source.Kind{Type: &networking.NetworkPolicy{}}, &handler.EnqueueRequestForOwner{
+	err = c.Watch(&source.Kind{Type: &networkv1.NetworkPolicy{}}, &handler.EnqueueRequestForOwner{
 		IsController: true,
 		OwnerType:    &corev1.Namespace{},
 	})
@@ -191,8 +192,8 @@ func (r *ReconcileNamespace) Reconcile(request reconcile.Request) (reconcile.Res
 	return reconcile.Result{}, nil
 }
 
-func getDenyDefaultNetworkPolicy(namespace *corev1.Namespace) *networking.NetworkPolicy {
-	defaultNetworkPolicy := &networking.NetworkPolicy{
+func getDenyDefaultNetworkPolicy(namespace *corev1.Namespace) *networkv1.NetworkPolicy {
+	defaultNetworkPolicy := &networkv1.NetworkPolicy{
 		TypeMeta: metav1.TypeMeta{
 			APIVersion: "networking.k8s.io/v1",
 			Kind:       "NetworkPolicy",
@@ -201,19 +202,19 @@ func getDenyDefaultNetworkPolicy(namespace *corev1.Namespace) *networking.Networ
 			Name:      "deny-by-default",
 			Namespace: namespace.GetName(),
 		},
-		Spec: networking.NetworkPolicySpec{
+		Spec: networkv1.NetworkPolicySpec{
 			PodSelector: metav1.LabelSelector{},
-			Egress:      []networking.NetworkPolicyEgressRule{},
-			Ingress:     []networking.NetworkPolicyIngressRule{},
+			Egress:      []networkv1.NetworkPolicyEgressRule{},
+			Ingress:     []networkv1.NetworkPolicyIngressRule{},
 		},
 	}
-	//defaultNetworkPolicy.Spec.Ingress = append(defaultNetworkPolicy.Spec.Ingress, networking.NetworkPolicyIngressRule{})
+	//defaultNetworkPolicy.Spec.Ingress = append(defaultNetworkPolicy.Spec.Ingress, networkv1.NetworkPolicyIngressRule{})
 
 	return defaultNetworkPolicy
 }
 
-func getAllowFromSelfNetworkPolicy(namespace *corev1.Namespace) *networking.NetworkPolicy {
-	allowFromSelfNetworkPolicy := &networking.NetworkPolicy{
+func getAllowFromSelfNetworkPolicy(namespace *corev1.Namespace) *networkv1.NetworkPolicy {
+	allowFromSelfNetworkPolicy := &networkv1.NetworkPolicy{
 		TypeMeta: metav1.TypeMeta{
 			APIVersion: "networking.k8s.io/v1",
 			Kind:       "NetworkPolicy",
@@ -222,15 +223,15 @@ func getAllowFromSelfNetworkPolicy(namespace *corev1.Namespace) *networking.Netw
 			Name:      "allow-from-self",
 			Namespace: namespace.GetName(),
 		},
-		Spec: networking.NetworkPolicySpec{
+		Spec: networkv1.NetworkPolicySpec{
 			PodSelector: metav1.LabelSelector{},
-			Egress:      []networking.NetworkPolicyEgressRule{},
-			Ingress:     []networking.NetworkPolicyIngressRule{},
+			Egress:      []networkv1.NetworkPolicyEgressRule{},
+			Ingress:     []networkv1.NetworkPolicyIngressRule{},
 		},
 	}
 
-	networkPolicyIngressRule := networking.NetworkPolicyIngressRule{
-		From: []networking.NetworkPolicyPeer{networking.NetworkPolicyPeer{
+	networkPolicyIngressRule := networkv1.NetworkPolicyIngressRule{
+		From: []networkv1.NetworkPolicyPeer{networkv1.NetworkPolicyPeer{
 			NamespaceSelector: getLabelSelectorFromAnnotation("name=" + namespace.GetName()),
 		}},
 	}
@@ -239,8 +240,8 @@ func getAllowFromSelfNetworkPolicy(namespace *corev1.Namespace) *networking.Netw
 	return allowFromSelfNetworkPolicy
 }
 
-func getNetworkPolicy(namespace *corev1.Namespace) *networking.NetworkPolicy {
-	networkPolicy := &networking.NetworkPolicy{
+func getNetworkPolicy(namespace *corev1.Namespace) *networkv1.NetworkPolicy {
+	networkPolicy := &networkv1.NetworkPolicy{
 		TypeMeta: metav1.TypeMeta{
 			APIVersion: "networking.k8s.io/v1",
 			Kind:       "NetworkPolicy",
@@ -249,10 +250,10 @@ func getNetworkPolicy(namespace *corev1.Namespace) *networking.NetworkPolicy {
 			Name:      namespace.GetName(),
 			Namespace: namespace.GetName(),
 		},
-		Spec: networking.NetworkPolicySpec{
+		Spec: networkv1.NetworkPolicySpec{
 			PodSelector: metav1.LabelSelector{},
-			Egress:      []networking.NetworkPolicyEgressRule{},
-			Ingress:     []networking.NetworkPolicyIngressRule{},
+			Egress:      []networkv1.NetworkPolicyEgressRule{},
+			Ingress:     []networkv1.NetworkPolicyIngressRule{},
 		},
 	}
 
@@ -278,14 +279,19 @@ func getNetworkPolicy(namespace *corev1.Namespace) *networking.NetworkPolicy {
          matchLabels:
            key2: value2
 */
-func getIngressRulesFromLabels(labels string) []networking.NetworkPolicyIngressRule {
+func getIngressRulesFromLabels(labels string) []networkv1.NetworkPolicyIngressRule {
 	labelsStrings := strings.Split(labels, ",")
-	rules := make([]networking.NetworkPolicyIngressRule, 0)
+	rules := make([]networkv1.NetworkPolicyIngressRule, 0)
+	rules = append(rules, networkv1.NetworkPolicyIngressRule{
+		From: []networkv1.NetworkPolicyPeer{networkv1.NetworkPolicyPeer{
+			PodSelector: &metav1.LabelSelector{},
+		}},
+	})
 	for _, labelString := range labelsStrings {
 		labelMap := map[string]string{}
 		if strings.Index(labelString, "=") < 1 {
 			log.Error(fmt.Errorf("Labels: %s ", labels), "FATAL: check namespace annotations - missing = sign ?", labels)
-			return make([]networking.NetworkPolicyIngressRule, 0)
+			return make([]networkv1.NetworkPolicyIngressRule, 0)
 		}
 		label := labelString[:strings.Index(labelString, "=")]
 		value := labelString[strings.Index(labelString, "=")+1:]
@@ -293,8 +299,8 @@ func getIngressRulesFromLabels(labels string) []networking.NetworkPolicyIngressR
 		lm := &metav1.LabelSelector{
 			MatchLabels: labelMap,
 		}
-		rules = append(rules, networking.NetworkPolicyIngressRule{
-			From: []networking.NetworkPolicyPeer{networking.NetworkPolicyPeer{
+		rules = append(rules, networkv1.NetworkPolicyIngressRule{
+			From: []networkv1.NetworkPolicyPeer{networkv1.NetworkPolicyPeer{
 				NamespaceSelector: lm,
 			}},
 		})
@@ -302,14 +308,14 @@ func getIngressRulesFromLabels(labels string) []networking.NetworkPolicyIngressR
 	return rules
 }
 
-func getEgressRulesFromLabels(labels string) []networking.NetworkPolicyEgressRule {
+func getEgressRulesFromLabels(labels string) []networkv1.NetworkPolicyEgressRule {
 	labelsStrings := strings.Split(labels, ",")
-	rules := make([]networking.NetworkPolicyEgressRule, 0)
+	rules := make([]networkv1.NetworkPolicyEgressRule, 0)
 	for _, labelString := range labelsStrings {
 		labelMap := map[string]string{}
 		if strings.Index(labelString, "=") < 1 {
 			log.Error(fmt.Errorf("Labels: %s ", labels), "FATAL: check namespace annotations - missing = sign ?", labels)
-			return make([]networking.NetworkPolicyEgressRule, 0)
+			return make([]networkv1.NetworkPolicyEgressRule, 0)
 		}
 		label := labelString[:strings.Index(labelString, "=")]
 		value := labelString[strings.Index(labelString, "=")+1:]
@@ -317,8 +323,8 @@ func getEgressRulesFromLabels(labels string) []networking.NetworkPolicyEgressRul
 		lm := &metav1.LabelSelector{
 			MatchLabels: labelMap,
 		}
-		rules = append(rules, networking.NetworkPolicyEgressRule{
-			To: []networking.NetworkPolicyPeer{networking.NetworkPolicyPeer{
+		rules = append(rules, networkv1.NetworkPolicyEgressRule{
+			To: []networkv1.NetworkPolicyPeer{networkv1.NetworkPolicyPeer{
 				NamespaceSelector: lm,
 			}},
 		})
