@@ -56,7 +56,6 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 		return err
 	}
 
-	// FIXME - add in ports annotation
 	isAnnotatedService := predicate.Funcs{
 		UpdateFunc: func(e event.UpdateEvent) bool {
 			_, ok := e.ObjectOld.(*corev1.Service)
@@ -89,7 +88,6 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 		return err
 	}
 
-	// TODO(user): Modify this to be the types you create that are owned by the primary resource
 	// Watch for changes to secondary resource Pods and requeue the owner Service
 	err = c.Watch(&source.Kind{Type: &networking.NetworkPolicy{}}, &handler.EnqueueRequestForOwner{
 		IsController: true,
@@ -111,9 +109,6 @@ type ReconcileService struct {
 
 // Reconcile reads that state of the cluster for a Service object and makes changes based on the state read
 // and what is in the Service.Spec
-// TODO(user): Modify this Reconcile function to implement your Controller logic.  This example creates
-// a Pod as an example
-// Note:
 // The Controller will requeue the Request to be processed again if the returned error is non-nil or
 // Result.Requeue is true, otherwise upon completion it will remove the work from the queue.
 func (r *ReconcileService) Reconcile(request reconcile.Request) (reconcile.Result, error) {
@@ -180,20 +175,8 @@ func getNetworkPolicy(service *corev1.Service) *networking.NetworkPolicy {
 			Ingress: []networking.NetworkPolicyIngressRule{},
 		},
 	}
-	// _, ok1 := service.Annotations[inboundPodLabels]
-	// _, ok2 := service.Annotations[inboundNamespaceLabels]
 
-	// if !ok1 && !ok2 {
-	// 	//if there are no pod or namespaces annotations we create one for inbound traffic only from the current namespace
-	// 	networkPolicyIngressRule := networking.NetworkPolicyIngressRule{
-	// 		From: []networking.NetworkPolicyPeer{networking.NetworkPolicyPeer{
-	// 			PodSelector: &metav1.LabelSelector{},
-	// 		}},
-	// 		Ports: append(getPortsFromService(service.Spec.Ports), getPortsFromAnnotation(service.Annotations[additionalInboundPortsAnnotation])...),
-	// 	}
-	// 	networkPolicy.Spec.Ingress = append(networkPolicy.Spec.Ingress, networkPolicyIngressRule)
-	// }
-
+	// If we have inbound pod labels, also append svc and annotation ports
 	if inboundPodLabels, ok := service.Annotations[inboundPodLabels]; ok {
 		networkPolicyIngressRule := networking.NetworkPolicyIngressRule{
 			From: []networking.NetworkPolicyPeer{networking.NetworkPolicyPeer{
@@ -203,22 +186,13 @@ func getNetworkPolicy(service *corev1.Service) *networking.NetworkPolicy {
 		}
 		networkPolicy.Spec.Ingress = append(networkPolicy.Spec.Ingress, networkPolicyIngressRule)
 
-	} else {
+	} else { // just append annotation ports, no pod selector
 		networkPolicyIngressRule := networking.NetworkPolicyIngressRule{
 			Ports: append([]networking.NetworkPolicyPort{}, getPortsFromAnnotation(service.Annotations[additionalInboundPortsAnnotation])...),
 		}
 		networkPolicy.Spec.Ingress = append(networkPolicy.Spec.Ingress, networkPolicyIngressRule)
 	}
-	// if inboundNamespaceLabels, ok := service.Annotations[inboundNamespaceLabels]; ok {
-	// 	networkPolicyIngressRule := networking.NetworkPolicyIngressRule{
-	// 		From: []networking.NetworkPolicyPeer{networking.NetworkPolicyPeer{
-	// 			NamespaceSelector: getLabelSelectorFromAnnotation(inboundNamespaceLabels),
-	// 		}},
-	// 		Ports: append(getPortsFromService(service.Spec.Ports), getPortsFromAnnotation(service.Annotations[additionalInboundPortsAnnotation])...),
-	// 	}
-	// 	networkPolicy.Spec.Ingress = append(networkPolicy.Spec.Ingress, networkPolicyIngressRule)
 
-	// }
 	if outboundPodLabels, ok := service.Annotations[outboundPodLabels]; ok {
 		networkPolicyEgressRule := networking.NetworkPolicyEgressRule{
 			To: []networking.NetworkPolicyPeer{networking.NetworkPolicyPeer{
@@ -228,15 +202,6 @@ func getNetworkPolicy(service *corev1.Service) *networking.NetworkPolicy {
 		}
 		networkPolicy.Spec.Egress = append(networkPolicy.Spec.Egress, networkPolicyEgressRule)
 	}
-	// if outboundNamespaceLabels, ok := service.Annotations[outboundNamespaceLabels]; ok {
-	// 	networkPolicyEgressRule := networking.NetworkPolicyEgressRule{
-	// 		To: []networking.NetworkPolicyPeer{networking.NetworkPolicyPeer{
-	// 			NamespaceSelector: getLabelSelectorFromAnnotation(outboundNamespaceLabels),
-	// 		}},
-	// 		Ports: getPortsFromAnnotation(service.Annotations[outboundPorts]),
-	// 	}
-	// 	networkPolicy.Spec.Egress = append(networkPolicy.Spec.Egress, networkPolicyEgressRule)
-	// }
 
 	return networkPolicy
 }
