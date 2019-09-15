@@ -81,7 +81,8 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 				return false
 			}
 			value, _ := e.Meta.GetAnnotations()[microsgmentationAnnotation]
-			return value == "true"
+			value2, _ := e.Meta.GetAnnotations()[allowFromSelfLabel]
+			return value == "true" || value2 == "true"
 		},
 	}
 
@@ -149,34 +150,31 @@ func (r *ReconcileNamespace) Reconcile(request reconcile.Request) (reconcile.Res
 		}
 	}
 
-	// Allow from self
-	allowFromSelfNetworkPolicy := getAllowFromSelfNetworkPolicy(instance)
-
-	if instance.Annotations[allowFromSelfLabel] == "true" && instance.Annotations[microsgmentationAnnotation] == "true" {
-		err = r.CreateOrUpdateResource(instance, instance.GetNamespace(), allowFromSelfNetworkPolicy)
-		if err != nil {
-			log.Error(err, "unable to create AllowFromSelfNetworkPolicy", "NetworkPolicy", allowFromSelfNetworkPolicy)
-			return r.manageError(err, instance)
-		}
-	} else {
-		err = r.GetClient().Delete(context.TODO(), allowFromSelfNetworkPolicy)
-		if err != nil {
-			if errors.IsNotFound(err) {
-				return reconcile.Result{}, nil
-			}
-			log.Error(err, "unable to delete AllowFromSelfNetworkPolicy", "NetworkPolicy", allowFromSelfNetworkPolicy)
-			return r.manageError(err, instance)
-		}
-	}
-
-	// Other Namespace NetworkPolicy
+	// Namespace Network Policies
 	networkPolicy := getNetworkPolicy(instance)
+	allowFromSelfNetworkPolicy := getAllowFromSelfNetworkPolicy(instance)
 
 	if instance.Annotations[microsgmentationAnnotation] == "true" {
 		err = r.CreateOrUpdateResource(instance, instance.GetNamespace(), networkPolicy)
 		if err != nil {
 			log.Error(err, "unable to create NetworkPolicy", "NetworkPolicy", networkPolicy)
 			return r.manageError(err, instance)
+		}
+		if instance.Annotations[allowFromSelfLabel] == "true" {
+			err = r.CreateOrUpdateResource(instance, instance.GetNamespace(), allowFromSelfNetworkPolicy)
+			if err != nil {
+				log.Error(err, "unable to create AllowFromSelfNetworkPolicy", "NetworkPolicy", allowFromSelfNetworkPolicy)
+				return r.manageError(err, instance)
+			}
+		} else {
+			err = r.GetClient().Delete(context.TODO(), allowFromSelfNetworkPolicy)
+			if err != nil {
+				if errors.IsNotFound(err) {
+					return reconcile.Result{}, nil
+				}
+				log.Error(err, "unable to delete AllowFromSelfNetworkPolicy", "NetworkPolicy", allowFromSelfNetworkPolicy)
+				return r.manageError(err, instance)
+			}
 		}
 	} else {
 		err = r.GetClient().Delete(context.TODO(), networkPolicy)
@@ -185,6 +183,14 @@ func (r *ReconcileNamespace) Reconcile(request reconcile.Request) (reconcile.Res
 				return reconcile.Result{}, nil
 			}
 			log.Error(err, "unable to delete NetworkPolicy", "NetworkPolicy", networkPolicy)
+			return r.manageError(err, instance)
+		}
+		err = r.GetClient().Delete(context.TODO(), allowFromSelfNetworkPolicy)
+		if err != nil {
+			if errors.IsNotFound(err) {
+				return reconcile.Result{}, nil
+			}
+			log.Error(err, "unable to delete AllowFromSelfNetworkPolicy", "NetworkPolicy", allowFromSelfNetworkPolicy)
 			return r.manageError(err, instance)
 		}
 	}
