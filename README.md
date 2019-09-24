@@ -1,5 +1,17 @@
 # Microsegmentation Operator
 
+## Build Image
+
+Build locally
+```
+make docker-build
+```
+
+Push to quay.io
+```
+make docker-push
+```
+
 ## Deploying the Operator
 
 This is a cluster-level operator that you can deploy in any namespace, `microsegmentation-operator` is recommended.
